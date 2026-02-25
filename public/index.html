@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PANEL DE LISTA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-card: #0f3460;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent: #e94560;
+            --accent-hover: #ff6b6b;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --border: #2a2a4a;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Login Screen */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+        }
+
+        .login-card {
+            background: var(--bg-card);
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .login-card h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+
+        .login-card p {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .pin-input {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.5rem;
+            text-align: center;
+            letter-spacing: 0.5rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .pin-input:focus {
+            border-color: var(--accent);
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+        }
+
+        .error-message {
+            color: var(--danger);
+            margin-top: 1rem;
+            display: none;
+        }
+
+        /* Dashboard */
+        .dashboard {
+            display: none;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            color: var(--accent);
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            padding: 0.8rem 1.2rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            width: 250px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .search-box:focus {
+            border-color: var(--accent);
+        }
+
+        .btn-add {
+            background: var(--accent);
+            color: white;
+            padding: 0.8rem 1.5rem;
+        }
+
+        .btn-add:hover {
+            background: var(--accent-hover);
+        }
+
+        /* Playlists Table */
+        .playlists-container {
+            background: var(--bg-card);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            display: grid;
+            grid-template-columns: 50px 1fr 150px 120px 150px 180px;
+            padding: 1rem 1.5rem;
+            background: var(--bg-secondary);
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .playlist-row {
+            display: grid;
+            grid-template-columns: 50px 1fr 150px 120px 150px 180px;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .playlist-row:hover {
+            background: rgba(233, 69, 96, 0.1);
+        }
+
+        .playlist-row:last-child {
+            border-bottom: none;
+        }
+
+        /* Status Indicator */
+        .status-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .status-indicator.active {
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .status-indicator.expired {
+            background: var(--danger);
+            box-shadow: 0 0 10px var(--danger);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .playlist-name {
+            font-weight: 500;
+        }
+
+        .playlist-phone {
+            color: var(--text-secondary);
+        }
+
+        .expiration-date {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .expiration-date.expired {
+            color: var(--danger);
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-action {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-copy {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-copy:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .btn-edit {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-edit:hover {
+            background: #3498db;
+            border-color: #3498db;
+        }
+
+        .btn-delete {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-delete:hover {
+            background: var(--danger);
+            border-color: var(--danger);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h2 {
+            color: var(--accent);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover {
+            color: var(--danger);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent);
+        }
+
+        textarea.form-control {
+            min-height: 300px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            resize: vertical;
+        }
+
+        select.form-control {
+            cursor: pointer;
+        }
+
+        .url-display {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .url-display input {
+            flex: 1;
+            padding: 0.8rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 2px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--bg-card);
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            border-left: 4px solid var(--success);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.error {
+            border-left-color: var(--danger);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .table-header,
+            .playlist-row {
+                grid-template-columns: 40px 1fr 120px 100px;
+            }
+
+            .expiration-date,
+            .actions {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .header-controls {
+                justify-content: space-between;
+            }
+
+            .search-box {
+                width: 100%;
+            }
+
+            .table-header {
+                display: none;
+            }
+
+            .playlist-row {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+                padding: 1rem;
+            }
+
+            .status-indicator {
+                display: inline-block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-container" id="loginScreen">
+        <div class="login-card">
+            <h1>PANEL DE LISTA</h1>
+            <p>Ingresa tu PIN de acceso</p>
+            <input type="password" class="pin-input" id="pinInput" maxlength="6" placeholder="******" autocomplete="off">
+            <button class="btn btn-primary" onclick="login()">ENTRAR</button>
+            <p class="error-message" id="loginError">PIN incorrecto. Intenta de nuevo.</p>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="dashboard" id="dashboard">
+        <div class="header">
+            <h1>PANEL DE LISTA</h1>
+            <div class="header-controls">
+                <input type="text" class="search-box" id="searchInput" placeholder="Buscar listas..." oninput="filterPlaylists()">
+                <button class="btn btn-add" onclick="openModal()">+ Nueva Lista</button>
+            </div>
+        </div>
+
+        <div class="playlists-container" id="playlistsContainer">
+            <div class="table-header">
+                <div>Estado</div>
+                <div>Nombre</div>
+                <div>Teléfono</div>
+                <div>Vencimiento</div>
+                <div>Fecha</div>
+                <div>Acciones</div>
+            </div>
+            <div id="playlistsList"></div>
+        </div>
+    </div>
+
+    <!-- Edit/Create Modal -->
+    <div class="modal-overlay" id="playlistModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">Nueva Lista M3U</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+
+            <form id="playlistForm" onsubmit="savePlaylist(event)">
+                <input type="hidden" id="playlistId">
+
+                <div class="form-group">
+                    <label>Nombre de la Lista</label>
+                    <input type="text" class="form-control" id="playlistName" required placeholder="Ej: Lista Premium 1">
+                </div>
+
+                <div class="form-group">
+                    <label>Teléfono / Usuario</label>
+                    <input type="text" class="form-control" id="playlistPhone" placeholder="Ej: +1234567890">
+                </div>
+
+                <div class="form-group">
+                    <label>Contenido M3U</label>
+                    <textarea class="form-control" id="playlistContent" required placeholder="#EXTM3U&#10;#EXTINF:-1,Canal 1&#10;http://example.com/stream1&#10;#EXTINF:-1,Canal 2&#10;http://example.com/stream2"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Duración</label>
+                    <select class="form-control" id="playlistDuration">
+                        <option value="1">1 Día</option>
+                        <option value="3">3 Días</option>
+                        <option value="7" selected>1 Semana</option>
+                        <option value="15">15 Días</option>
+                        <option value="35">35 Días</option>
+                        <option value="180">6 Meses</option>
+                        <option value="365">1 Año</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="urlGroup" style="display: none;">
+                    <label>URL de la Lista (Pública)</label>
+                    <div class="url-display">
+                        <input type="text" id="playlistUrl" readonly>
+                        <button type="button" class="btn btn-copy" onclick="copyUrl()">Copiar</button>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let playlists = [];
+        let isEditing = false;
+
+        // Check if already logged in
+        if (localStorage.getItem('isAuthenticated') === 'true') {
+            showDashboard();
+        }
+
+        function login() {
+            const pin = document.getElementById('pinInput').value;
+
+            fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    localStorage.setItem('isAuthenticated', 'true');
+                    showDashboard();
+                } else {
+                    document.getElementById('loginError').style.display = 'block';
+                    document.getElementById('pinInput').value = '';
+                }
+            })
+            .catch(err => {
+                showToast('Error de conexión', true);
+            });
+        }
+
+        // Allow Enter key for login
+        document.getElementById('pinInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+
+        function showDashboard() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            loadPlaylists();
+        }
+
+        function loadPlaylists() {
+            fetch('/api/playlists')
+                .then(res => res.json())
+                .then(data => {
+                    playlists = data;
+                    renderPlaylists(playlists);
+                })
+                .catch(err => {
+                    showToast('Error al cargar listas', true);
+                });
+        }
+
+        function renderPlaylists(data) {
+            const container = document.getElementById('playlistsList');
+
+            if (data.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p>No hay listas cargadas</p>
+                        <button class="btn btn-add" onclick="openModal()" style="margin-top: 1rem;">Crear Primera Lista</button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = data.map(playlist => {
+                const now = Date.now();
+                const expiration = playlist.expiration_date;
+                const isExpired = now > expiration;
+                const statusClass = isExpired ? 'expired' : 'active';
+                const dateClass = isExpired ? 'expired' : '';
+                const statusText = isExpired ? 'Caducada' : 'Activa';
+
+                const expirationText = getExpirationText(expiration);
+                const date = new Date(expiration).toLocaleDateString('es-ES', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                });
+
+                const url = `${window.location.origin}/get/${playlist.public_token}.m3u`;
+
+                return `
+                    <div class="playlist-row">
+                        <div>
+                            <div class="status-indicator ${statusClass}" title="${statusText}"></div>
+                        </div>
+                        <div class="playlist-name">${escapeHtml(playlist.name)}</div>
+                        <div class="playlist-phone">${escapeHtml(playlist.phone || 'N/A')}</div>
+                        <div class="expiration-date ${dateClass}">${expirationText}</div>
+                        <div class="expiration-date ${dateClass}">${date}</div>
+                        <div class="actions">
+                            <button class="btn-action btn-copy" onclick="copyToClipboard('${url}')" title="Copiar URL">📋 URL</button>
+                            <button class="btn-action btn-edit" onclick="editPlaylist(${playlist.id})" title="Editar">✏️</button>
+                            <button class="btn-action btn-delete" onclick="deletePlaylist(${playlist.id})" title="Eliminar">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getExpirationText(expiration) {
+            const now = Date.now();
+            const diff = expiration - now;
+
+            if (diff < 0) return 'Caducada';
+
+            const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+            if (days <= 1) return '1 día';
+            if (days <= 3) return `${days} días`;
+            if (days <= 7) return '1 semana';
+            if (days <= 15) return '15 días';
+            if (days <= 35) return '35 días';
+            if (days <= 180) return '6 meses';
+            return '1 año';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function filterPlaylists() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = playlists.filter(p =>
+                p.name.toLowerCase().includes(search) ||
+                (p.phone && p.phone.toLowerCase().includes(search))
+            );
+            renderPlaylists(filtered);
+        }
+
+        function openModal(playlist = null) {
+            isEditing = !!playlist;
+            const modal = document.getElementById('playlistModal');
+            const title = document.getElementById('modalTitle');
+            const form = document.getElementById('playlistForm');
+            const urlGroup = document.getElementById('urlGroup');
+
+            if (playlist) {
+                title.textContent = 'Editar Lista M3U';
+                urlGroup.style.display = 'block';
+                document.getElementById('playlistId').value = playlist.id;
+                document.getElementById('playlistName').value = playlist.name;
+                document.getElementById('playlistPhone').value = playlist.phone || '';
+                document.getElementById('playlistContent').value = playlist.content;
+                document.getElementById('playlistDuration').value = '7'; // Default
+                document.getElementById('playlistUrl').value = `${window.location.origin}/get/${playlist.public_token}.m3u`;
+            } else {
+                title.textContent = 'Nueva Lista M3U';
+                urlGroup.style.display = 'none';
+                form.reset();
+                document.getElementById('playlistId').value = '';
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('playlistModal').style.display = 'none';
+        }
+
+        function editPlaylist(id) {
+            fetch(`/api/playlists/${id}`)
+                .then(res => res.json())
+                .then(data => {
+                    openModal(data);
+                })
+                .catch(err => {
+                    showToast('Error al cargar lista', true);
+                });
+        }
+
+        function savePlaylist(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('playlistId').value;
+            const name = document.getElementById('playlistName').value;
+            const phone = document.getElementById('playlistPhone').value;
+            const content = document.getElementById('playlistContent').value;
+            const duration = document.getElementById('playlistDuration').value;
+
+            const data = { name, phone, content, duration };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/playlists/${id}` : '/api/playlists';
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.success) {
+                    showToast(id ? 'Lista actualizada' : 'Lista creada');
+                    closeModal();
+                    loadPlaylists();
+                }
+            })
+            .catch(err => {
+                showToast('Error al guardar', true);
+            });
+        }
+
+        function deletePlaylist(id) {
+            if (!confirm('¿Estás seguro de eliminar esta lista?')) return;
+
+            fetch(`/api/playlists/${id}`, {
+                method: 'DELETE'
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.success) {
+                    showToast('Lista eliminada');
+                    loadPlaylists();
+                }
+            })
+            .catch(err => {
+                showToast('Error al eliminar', true);
+            });
+        }
+
+        function copyUrl() {
+            const url = document.getElementById('playlistUrl').value;
+            copyToClipboard(url);
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('URL copiada al portapapeles');
+            }).catch(() => {
+                showToast('Error al copiar', true);
+            });
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast' + (isError ? ' error' : '');
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Close modal on outside click
+        document.getElementById('playlistModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
