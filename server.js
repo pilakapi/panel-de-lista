@@ -1,237 +1,174 @@
 const express = require('express');
-const initSqlJs = require('sql.js');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
-const fs = require('fs');
-const path = require('path');
+const pool = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static(__dirname));
 
-// Database setup
-let db;
-const DB_PATH = path.join(__dirname, 'database.sqlite');
-
+// Crear tabla si no existe
 async function initDatabase() {
-    const SQL = await initSqlJs();
-
-    // Try to load existing database
-    if (fs.existsSync(DB_PATH)) {
-        const fileBuffer = fs.readFileSync(DB_PATH);
-        db = new SQL.Database(fileBuffer);
-    } else {
-        db = new SQL.Database();
-    }
-
-    // Create tables
-    db.run(`
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS playlists (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             phone TEXT,
             content TEXT NOT NULL,
-            expiration_date INTEGER NOT NULL,
+            expiration_date BIGINT NOT NULL,
             public_token TEXT UNIQUE NOT NULL,
-            created_at INTEGER NOT NULL
+            created_at BIGINT NOT NULL
         )
     `);
-
-    // Save database
-    saveDatabase();
 }
 
-function saveDatabase() {
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    fs.writeFileSync(DB_PATH, buffer);
-}
-
-// Routes
-
-// Login
+// LOGIN (igual que antes)
 app.post('/api/login', (req, res) => {
     const { pin } = req.body;
     if (pin === '198837') {
         res.json({ success: true, token: 'authenticated' });
     } else {
-        res.status(401).json({ success: false, message: 'PIN incorrecto' });
+        res.status(401).json({ success: false });
     }
 });
 
-// Get all playlists
-app.get('/api/playlists', (req, res) => {
+// Obtener playlists
+app.get('/api/playlists', async (req, res) => {
     try {
-        const results = db.exec(`
+        const result = await pool.query(`
             SELECT id, name, phone, expiration_date, public_token, created_at,
             LENGTH(content) as content_length
             FROM playlists
             ORDER BY created_at DESC
         `);
-
-        if (results.length === 0) {
-            return res.json([]);
-        }
-
-        const columns = results[0].columns;
-        const values = results[0].values.map(row => {
-            const obj = {};
-            columns.forEach((col, i) => {
-                obj[col] = row[i];
-            });
-            return obj;
-        });
-
-        res.json(values);
+        res.json(result.rows);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Get single playlist for editing
-app.get('/api/playlists/:id', (req, res) => {
+// Obtener una playlist
+app.get('/api/playlists/:id', async (req, res) => {
     try {
-        const stmt = db.prepare('SELECT * FROM playlists WHERE id = ?');
-        stmt.bind([parseInt(req.params.id)]);
+        const result = await pool.query(
+            'SELECT * FROM playlists WHERE id = $1',
+            [req.params.id]
+        );
 
-        if (stmt.step()) {
-            const row = stmt.getAsObject();
-            res.json(row);
-        } else {
-            res.status(404).json({ error: 'Lista no encontrada' });
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Lista no encontrada' });
         }
-        stmt.free();
+
+        res.json(result.rows[0]);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Create playlist
-app.post('/api/playlists', (req, res) => {
+// Crear playlist
+app.post('/api/playlists', async (req, res) => {
     try {
         const { name, phone, content, duration } = req.body;
 
-        // Calculate expiration date
         const now = Date.now();
         const durations = {
-            '1': 1 * 24 * 60 * 60 * 1000,           // 1 day
-            '3': 3 * 24 * 60 * 60 * 1000,           // 3 days
-            '7': 7 * 24 * 60 * 60 * 1000,           // 1 week
-            '15': 15 * 24 * 60 * 60 * 1000,         // 15 days
-            '35': 35 * 24 * 60 * 60 * 1000,         // 35 days
-            '180': 180 * 24 * 60 * 60 * 1000,       // 6 months
-            '365': 365 * 24 * 60 * 60 * 1000        // 1 year
+            '1': 86400000,
+            '3': 259200000,
+            '7': 604800000,
+            '15': 1296000000,
+            '35': 3024000000,
+            '180': 15552000000,
+            '365': 31536000000
         };
 
         const expirationDate = now + (durations[duration] || durations['7']);
-
-        // Generate unique public token
         const publicToken = uuidv4();
 
-        const stmt = db.prepare(`
-            INSERT INTO playlists (name, phone, content, expiration_date, public_token, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `);
-
-        stmt.run([name, phone, content, expirationDate, publicToken, now]);
-        stmt.free();
-
-        saveDatabase();
+        const result = await pool.query(
+            `INSERT INTO playlists 
+            (name, phone, content, expiration_date, public_token, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id`,
+            [name, phone, content, expirationDate, publicToken, now]
+        );
 
         res.json({
             success: true,
-            id: db.exec('SELECT last_insert_rowid()')[0].values[0][0],
+            id: result.rows[0].id,
             public_token: publicToken
         });
+
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Update playlist
-app.put('/api/playlists/:id', (req, res) => {
+// Actualizar
+app.put('/api/playlists/:id', async (req, res) => {
     try {
         const { name, phone, content, duration } = req.body;
-        const id = parseInt(req.params.id);
 
-        // Calculate new expiration date
         const now = Date.now();
         const durations = {
-            '1': 1 * 24 * 60 * 60 * 1000,
-            '3': 3 * 24 * 60 * 60 * 1000,
-            '7': 7 * 24 * 60 * 60 * 1000,
-            '15': 15 * 24 * 60 * 60 * 1000,
-            '35': 35 * 24 * 60 * 60 * 1000,
-            '180': 180 * 24 * 60 * 60 * 1000,
-            '365': 365 * 24 * 60 * 60 * 1000
+            '1': 86400000,
+            '3': 259200000,
+            '7': 604800000,
+            '15': 1296000000,
+            '35': 3024000000,
+            '180': 15552000000,
+            '365': 31536000000
         };
 
         const expirationDate = now + (durations[duration] || durations['7']);
 
-        const stmt = db.prepare(`
-            UPDATE playlists
-            SET name = ?, phone = ?, content = ?, expiration_date = ?
-            WHERE id = ?
-        `);
+        await pool.query(
+            `UPDATE playlists
+             SET name=$1, phone=$2, content=$3, expiration_date=$4
+             WHERE id=$5`,
+            [name, phone, content, expirationDate, req.params.id]
+        );
 
-        stmt.run([name, phone, content, expirationDate, id]);
-        stmt.free();
+        res.json({ success: true });
 
-        saveDatabase();
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
+// Eliminar
+app.delete('/api/playlists/:id', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM playlists WHERE id=$1', [req.params.id]);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Delete playlist
-app.delete('/api/playlists/:id', (req, res) => {
+// Ruta pública M3U
+app.get('/get/:token.m3u', async (req, res) => {
     try {
-        const stmt = db.prepare('DELETE FROM playlists WHERE id = ?');
-        stmt.run([parseInt(req.params.id)]);
-        stmt.free();
+        const result = await pool.query(
+            'SELECT content FROM playlists WHERE public_token=$1',
+            [req.params.token]
+        );
 
-        saveDatabase();
-
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Public M3U access route
-app.get('/get/:token.m3u', (req, res) => {
-    try {
-        const token = req.params.token;
-
-        const stmt = db.prepare('SELECT content FROM playlists WHERE public_token = ?');
-        stmt.bind([token]);
-
-        if (stmt.step()) {
-            const row = stmt.getAsObject();
-            res.setHeader('Content-Type', 'application/x-mpegurl');
-            res.setHeader('Content-Disposition', 'attachment; filename="playlist.m3u"');
-            res.send(row.content);
-        } else {
-            res.status(404).send('Lista no encontrada');
+        if (result.rows.length === 0) {
+            return res.status(404).send('Lista no encontrada');
         }
-        stmt.free();
+
+        res.setHeader('Content-Type', 'application/x-mpegurl');
+        res.send(result.rows[0].content);
+
     } catch (error) {
         res.status(500).send('Error del servidor');
     }
 });
 
-// Start server
 initDatabase().then(() => {
     app.listen(PORT, () => {
         console.log(`Servidor corriendo en puerto ${PORT}`);
     });
-}).catch(err => {
-    console.error('Error al inicializar la base de datos:', err);
-    process.exit(1);
 });
